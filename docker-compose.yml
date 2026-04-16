@@ -1,0 +1,47 @@
+services:
+  # MongoDB database
+  mongodb:
+    image: mongo:7
+    container_name: nexusai-mongodb
+    restart: unless-stopped
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongo-data:/data/db
+    healthcheck:
+      test: ["CMD", "mongosh", "--eval", "db.adminCommand('ping')"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # FastAPI backend
+  backend:
+    build: ./backend
+    container_name: nexusai-backend
+    restart: unless-stopped
+    ports:
+      - "8000:8000"
+    environment:
+      - OLLAMA_BASE_URL=http://host.docker.internal:11434
+      - OLLAMA_MODEL=llama3.2
+      - MONGODB_URI=mongodb://mongodb:27017
+      - MONGODB_DB=ai_chatbot
+      - CLIENT_ORIGINS=http://localhost:3000,http://localhost:8080
+    depends_on:
+      mongodb:
+        condition: service_healthy
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+
+  # React frontend
+  frontend:
+    build: ./sparkle-ai-room-main
+    container_name: nexusai-frontend
+    restart: unless-stopped
+    ports:
+      - "3000:80"
+    depends_on:
+      - backend
+
+volumes:
+  mongo-data:
