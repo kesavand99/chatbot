@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Authentication Portal</title>
+  <link rel="stylesheet" href="common.css">
+</head>
+<body>
+  <div class="container">
+    <h1>Welcome</h1>
+    <p class="sub">Choose your authentication method</p>
+
+    <div class="panel">
+      <h3>Authentication Options</h3>
+      
+      <div style="margin: 16px 0;">
+        <a href="login.html" class="btn btn-primary" style="text-decoration: none; display: inline-block; text-align: center; margin-bottom: 8px;">User Sign In</a>
+      </div>
+      
+      <div style="margin: 16px 0;">
+        <a href="admin_login.html" class="btn btn-primary" style="text-decoration: none; display: inline-block; text-align: center; margin-bottom: 8px;">Admin Sign In</a>
+      </div>
+      
+      <div style="margin: 16px 0;">
+        <a href="mfa.html" class="btn btn-ghost" style="text-decoration: none; display: inline-block; text-align: center; margin-bottom: 8px;">Setup 2FA</a>
+      </div>
+    </div>
+
+    <div class="center helper">
+      <p class="muted">This authentication system supports:</p>
+      <ul style="text-align: left; max-width: 300px; margin: 0 auto;">
+        <li>Email/Password authentication</li>
+        <li>Admin authentication with MFA</li>
+        <li>Google Sign-In</li>
+        <li>Two-Factor Authentication (TOTP)</li>
+        <li>User registration</li>
+      </ul>
+    </div>
+
+    <!-- Response Box -->
+    <div class="response" id="out">Ready to authenticate</div>
+  </div>
+
+  <script>
+    // Simple status check
+    const out = document.getElementById('out');
+    function setOut(obj) {
+      out.textContent = typeof obj === 'string' ? obj : JSON.stringify(obj, null, 2);
+    }
+
+    // Check if user is already logged in
+    window.addEventListener('DOMContentLoaded', () => {
+      const token = localStorage.getItem('access_token');
+      if (token) {
+        setOut('You are already logged in! Redirecting to dashboard...');
+        setTimeout(() => window.location.href = 'welcome.html', 2000);
+      } else {
+        setOut('Ready to authenticate - no existing session found');
+      }
+    });
+  </script>
+</body>
+</html>

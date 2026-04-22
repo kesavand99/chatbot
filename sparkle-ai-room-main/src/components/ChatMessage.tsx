@@ -9,9 +9,10 @@ interface ChatMessageProps {
   role: "user" | "assistant";
   content: string;
   index: number;
+  userName?: string;
 }
 
-const ChatMessage = ({ role, content, index }: ChatMessageProps) => {
+const ChatMessage = ({ role, content, index, userName }: ChatMessageProps) => {
   const [copied, setCopied] = useState(false);
   const isUser = role === "user";
 
@@ -135,26 +136,25 @@ const ChatMessage = ({ role, content, index }: ChatMessageProps) => {
       style={{ animationDelay: `${index * 50}ms` }}
     >
       <div className={cn("flex gap-4 px-4 py-5 max-w-4xl mx-auto", isUser && "flex-row-reverse")}>
-        {/* Avatar */}
         <div className={cn(
           "w-8 h-8 rounded-lg flex items-center justify-center shrink-0 mt-0.5",
           isUser
-            ? "bg-accent/20 text-accent"
-            : "bg-primary/10 text-primary glow-primary"
+            ? "bg-muted text-muted-foreground border-2 border-border"
+            : "bg-gradient-to-br from-primary to-blue-600 text-white shadow-sm"
         )}>
-          {isUser ? <User className="w-4 h-4" /> : <Bot className="w-4 h-4" />}
+          {isUser ? <User className="w-4 h-4" /> : <Bot className="w-4 h-4 text-white" />}
         </div>
 
         {/* Content */}
         <div className={cn("flex-1 space-y-2", isUser && "text-right")}>
           <p className="text-[11px] font-medium text-muted-foreground">
-            {isUser ? "You" : "NexusAI"}
+            {isUser ? (userName || "You") : "NexusAI"}
           </p>
           <div className={cn(
-            "inline-block text-sm leading-relaxed rounded-2xl px-4 py-3 max-w-[min(100%,52rem)] text-left",
+            "inline-block text-sm leading-relaxed rounded-2xl px-4 py-3 max-w-[min(100%,52rem)] text-left shadow-sm",
             isUser
-              ? "bg-accent/15 text-foreground rounded-tr-sm"
-              : "bg-secondary text-foreground rounded-tl-sm prose-sm"
+              ? "bg-gradient-to-br from-primary to-blue-600 text-white rounded-tr-sm"
+              : "bg-secondary text-foreground rounded-tl-sm border border-border/50 prose-sm"
           )}>
             {renderedContent}
           </div>

@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Complete Google Registration</title>
+  <!-- Google Identity Services for ID token -->
+  <script src="https://accounts.google.com/gsi/client" async defer></script>
+  <link rel="stylesheet" href="common.css">
+</head>
+<body>
+  <div class="container">
+    <h1>Complete Your Registration</h1>
+    <p class="sub">First-time Google sign-in requires additional information</p>
+
+    <!-- Google Sign In Button (to get token) -->
+    <div id="googleButton"></div>
+    <div class="center muted" style="margin-top:8px;">Click above to get your Google credentials first</div>
+
+    <!-- Google Registration Panel -->
+    <div class="panel">
+      <h3>Additional Information Required</h3>
+      <p class="muted">Since this is your first time signing in with Google, we need a few more details.</p>
+      
+      <div style="margin-top: 12px; display: flex; gap: 8px;">
+        <button class="btn btn-primary" type="button" onclick="googleRegister()">Register with Google</button>
+        <button class="btn btn-ghost" type="button" onclick="navigateTo('login.html')">Cancel</button>
+      </div>
+    </div>
+
+    <div class="center helper">
+      <span class="muted">Already have an account? </span>
+      <a href="login.html">Sign In Instead</a>
+    </div>
+
+    <!-- Response Box -->
+    <div class="response" id="out">(waiting)</div>
+  </div>
+
+  <script src="common.js"></script>
+  <script>
+    // Override the Google response handler for this page
+    function handleGoogleCredentialResponse(resp) {
+      latestIdToken = resp && resp.credential ? resp.credential : null;
+      if (!latestIdToken) {
+        setOut('No Google token received.');
+        return;
+      }
+      setOut({ info: 'Google ID token received. Now click "Register with Google" below.' });
+    }
+
+    async function googleRegister() {
+      if (!latestIdToken) {
+        setOut('Get Google token first by clicking "Sign In with Google"');
+        return;
+      }
+      
+      const phone = 'none'; // Phone not required; send placeholder
+      const roleId = 2; // Default role
+      
+      try {
+        const res = await fetch(`${API_BASE}/auth/googleauthentication`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ id_token: latestIdToken, phone, role_id: roleId })
+        });
+        const data = await res.json();
+        setOut({ status: res.status, data });
+        
+        if (res.ok) {
+          if (data?.data?.access_token) {
+            try { localStorage.setItem('access_token', data.data.access_token); } catch {}
+          }
+          setOut('Google registration successful! Redirecting to dashboard...');
+          setTimeout(() => navigateTo('welcome.html'), 1500);
+        }
+      } catch (e) {
+        setOut({ error: e?.message || String(e) });
+      }
+    }
+
+    // Page initialization
+    window.addEventListener('DOMContentLoaded', () => {
+      setOut('Click "Sign In with Google" first to get your credentials, then "Register with Google".');
+    });
+  </script>
+</body>
+</html>

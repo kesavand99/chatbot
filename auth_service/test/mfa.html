@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Two-Factor Authentication</title>
+  <link rel="stylesheet" href="common.css">
+</head>
+<body>
+  <div class="container">
+    <h1>Two‑Factor Authentication (TOTP)</h1>
+    <p class="sub">Set up or verify your authenticator</p>
+
+    <!-- MFA Setup/Verify Panel -->
+    <div class="panel">
+      <label for="mfa-identifier">Identifier</label>
+      <input id="mfa-identifier" placeholder="user@example.com or +919876543210" />
+
+      <div id="mfa-setup-controls" style="margin-top: 12px; display:flex; gap:8px;">
+        <button id="mfa-start-btn" class="btn btn-ghost" type="button" onclick="mfaStart()">Start TOTP Setup</button>
+        <button class="btn btn-ghost" type="button" onclick="closeMfaPanel()">Back to Login</button>
+      </div>
+
+      <div id="mfa-setup-panel" class="hidden" style="margin-top: 12px;">
+        <div class="qr-wrap">
+          <div class="qr-box">
+            <img id="mfa-qr" alt="QR Code" style="max-width:100%; max-height:100%;" />
+          </div>
+          <div>
+            <div class="kv"><div><strong>Secret:</strong> <span id="mfa-secret"></span></div></div>
+            <div class="kv"><div><strong>otpauth URL:</strong> <a id="mfa-otpauth" href="#" target="_blank" rel="noopener noreferrer">open</a></div></div>
+            <p class="muted">If QR fails, add your account in the authenticator using the secret manually.</p>
+          </div>
+        </div>
+      </div>
+
+      <label for="mfa-code" style="margin-top:16px;">Enter 6‑digit code</label>
+      <input id="mfa-code" inputmode="numeric" pattern="\d{6}" placeholder="123456" />
+      
+      <div style="margin-top: 12px; display:flex; gap:8px;">
+        <button class="btn btn-primary" type="button" onclick="mfaVerify()">Verify TOTP</button>
+      </div>
+    </div>
+
+    <!-- Response Box -->
+    <div class="response" id="out">(waiting)</div>
+  </div>
+
+  <script src="common.js"></script>
+  <script>
+    // Load MFA context from sessionStorage
+    window.addEventListener('DOMContentLoaded', () => {
+      const identifier = sessionStorage.getItem('mfa_identifier');
+      const context = sessionStorage.getItem('mfa_context');
+      const showStart = sessionStorage.getItem('mfa_show_start') === 'true';
+      const autoStart = sessionStorage.getItem('mfa_auto_start') === 'true';
+      
+      // Restore context
+      mfaContext = context || null;
+      
+      // Restore credentials
+      const loginCreds = sessionStorage.getItem('last_login_creds');
+      const registerCreds = sessionStorage.getItem('last_register_creds');
+      if (loginCreds) {
+        try { lastLoginCreds = JSON.parse(loginCreds); } catch {}
+      }
+      if (registerCreds) {
+        try { lastRegisterCreds = JSON.parse(registerCreds); } catch {}
+      }
+      
+      // Set up the page
+      const idEl = document.getElementById('mfa-identifier');
+      const setupControls = document.getElementById('mfa-setup-controls');
+      const startBtn = document.getElementById('mfa-start-btn');
+      const setupPanel = document.getElementById('mfa-setup-panel');
+
+      if (identifier) {
+        idEl.value = identifier;
+      }
+
+      // Configure visibility
+      setupControls.style.display = showStart ? 'flex' : 'none';
+      startBtn.style.display = showStart ? '' : 'none';
+
+      // Reset QR/secret
+      document.getElementById('mfa-qr').src = '';
+      document.getElementById('mfa-secret').textContent = '';
+      document.getElementById('mfa-otpauth').href = '#';
+      setupPanel.classList.add('hidden');
+
+      if (autoStart && showStart) {
+        // Small delay to ensure UI is ready
+        setTimeout(() => mfaStart(), 100);
+      }
+      
+      setOut('MFA setup loaded. Enter your identifier and click "Start TOTP Setup"');
+    });
+
+    function closeMfaPanel() {
+      // Clean up sessionStorage
+      sessionStorage.removeItem('mfa_identifier');
+      sessionStorage.removeItem('mfa_context');
+      sessionStorage.removeItem('mfa_show_start');
+      sessionStorage.removeItem('mfa_auto_start');
+      sessionStorage.removeItem('last_login_creds');
+      sessionStorage.removeItem('last_register_creds');
+      
+      // Reset context
+      mfaContext = null;
+      lastLoginCreds = null;
+      lastRegisterCreds = null;
+      
+      // Navigate back to login
+      navigateTo('login.html');
+    }
+  </script>
+</body>
+</html>

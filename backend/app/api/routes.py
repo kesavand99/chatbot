@@ -61,6 +61,14 @@ async def list_pending_admin():
         raise HTTPException(status_code=exc.status_code, detail=exc.message) from exc
 
 
+@router.get("/admin/resolved", response_model=ChatListResponse)
+async def list_resolved_admin():
+    try:
+        return await chat_service.list_resolved_admin()
+    except ChatServiceError as exc:
+        raise HTTPException(status_code=exc.status_code, detail=exc.message) from exc
+
+
 @router.post("/admin/answer/{session_id}", status_code=status.HTTP_200_OK)
 async def answer_as_admin(session_id: str, payload: ChatRequest):
     try:

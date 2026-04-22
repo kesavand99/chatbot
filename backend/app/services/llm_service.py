@@ -91,7 +91,8 @@ class LLMService:
                         yield chunk_text
                     if chunk_data.get("done"):
                         break
-        except Exception:
+        except Exception as e:
+            print(f"Error communicating with Ollama: {str(e)}")
             yield "I'm sorry, I encountered an error communicating with Ollama."
 
     async def generate_title(self, message: str) -> str | None:
@@ -103,7 +104,8 @@ class LLMService:
         try:
             title = await self._simple_call(prompt)
             return title[:50] if title else None
-        except Exception:
+        except Exception as e:
+            print(f"Error in LLM service: {str(e)}")
             return None
 
     async def generate_suggested_replies(self, assistant_text: str) -> list[str]:
@@ -143,5 +145,6 @@ class LLMService:
             response.raise_for_status()
             data = response.json()
             return data.get("message", {}).get("content", "").strip()
-        except Exception:
+        except Exception as e:
+            print(f"Error in LLM service: {str(e)}")
             return None

@@ -69,27 +69,24 @@ VITE_API_BASE_URL=http://192.168.0.40:8000
 
 ---
 
-## 2. Running the Project for Network Access
+## 2. Easy One-Command Startup (Recommended)
 
-To use the app on other laptops in the same Wi-Fi network, follow these steps:
+To start all services (Ollama, Backend, and Frontend) at once, use the `start_all.sh` script:
 
-### Step A: Run the Backend
-You **must** use the `--host 0.0.0.0` flag to allow incoming connections from the network.
 ```bash
-cd backend
-uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
+./start_all.sh
 ```
 
-### Step B: Run the Frontend
-Vite is already configured to broadcast on the network.
-```bash
-cd sparkle-ai-room-main
-npm run dev
-```
+This will:
+1. Start **Ollama** (if it's not already running).
+2. Start the **Backend** (running on port 8000).
+3. Start the **Frontend** (running on port 8080).
+
+To stop all services, simply press **Ctrl+C** in the terminal where the script is running.
 
 ---
 
-## 3. How to Access from Another Laptop
+## 3. Running the Project Individually
 
 1.  Connect the other laptop to the **same Wi-Fi network**.
 2.  Open a web browser.

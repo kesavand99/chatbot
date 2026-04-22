@@ -8,6 +8,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import SupportWidget from "@/components/SupportWidget";
 import TypingIndicator from "@/components/TypingIndicator";
+import LoginPrompt from "@/components/LoginPrompt";
+import { useAuth } from "@/contexts/AuthContext";
 
 // Simple UUID fallback for non-secure contexts
 const generateId = () => {
@@ -31,7 +33,38 @@ const ConnectedIndex = () => {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [suggestedReplies, setSuggestedReplies] = useState<string[]>([]);
   const [isSupportOpen, setIsSupportOpen] = useState(false);
+
+  const { user, login, logout, showLoginPrompt } = useAuth();
   
+  const getLocalChats = () => {
+    try {
+      return JSON.parse(localStorage.getItem("nexus_local_chats") || "[]") as string[];
+    } catch {
+      return [];
+    }
+  };
+
+  const addLocalChat = (id: string) => {
+    const chats = getLocalChats();
+    if (!chats.includes(id)) {
+      localStorage.setItem("nexus_local_chats", JSON.stringify([id, ...chats]));
+    }
+  };
+
+  const removeLocalChat = (id: string) => {
+    const chats = getLocalChats();
+    localStorage.setItem("nexus_local_chats", JSON.stringify(chats.filter(c => c !== id)));
+  };
+
+  const [guestSupportId] = useState(() => {
+    let id = localStorage.getItem("nexus_guest_support_id");
+    if (!id) {
+      id = "guest_" + generateId();
+      localStorage.setItem("nexus_guest_support_id", id);
+    }
+    return id;
+  });
+
   const chatSocket = useRef<WebSocket | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
 
@@ -48,13 +81,16 @@ const ConnectedIndex = () => {
   const loadChats = async () => {
     try {
       const data = await listChats();
-      setChats(data.chats.map(c => ({
+      const localIds = getLocalChats();
+      const filteredChats = data.chats.filter(c => localIds.includes(c.session_id));
+      
+      setChats(filteredChats.map(c => ({
         id: c.session_id,
         title: c.title,
         date: new Date(c.updated_at).toLocaleDateString()
       })));
       
-      if (data.chats.length > 0 && !activeChat) {
+      if (filteredChats.length > 0 && !activeChat) {
         // Don't auto-select if we want a fresh start
       }
     } catch (error) {
@@ -86,6 +122,7 @@ const ConnectedIndex = () => {
   const deleteChat = async (id: string) => {
     try {
       await deleteChatById(id);
+      removeLocalChat(id);
       toast.success("Chat deleted");
       if (activeChat === id) {
         handleNewChat();
@@ -102,6 +139,7 @@ const ConnectedIndex = () => {
     const sessionId = activeChat || generateId();
     if (!activeChat) {
       setActiveChat(sessionId);
+      addLocalChat(sessionId);
     }
 
     const userMsg: ApiMessage = { role: "user", content: text };
@@ -179,12 +217,17 @@ const ConnectedIndex = () => {
         onNewChat={handleNewChat}
         onDeleteChat={deleteChat}
         isOpen={isSidebarOpen}
+        userName={user?.name}
+        userEmail={user?.email}
+        isLoggedIn={!!user}
+        onLogin={login}
+        onLogout={logout}
       />
 
       {/* Main Content */}
       <main className="flex-1 flex flex-col relative min-w-0">
         {/* Header */}
-        <header className="h-16 border-b border-border flex items-center justify-between px-4 bg-background/50 backdrop-blur-md sticky top-0 z-20">
+        <header className="h-16 border-b border-border flex items-center justify-between px-4 bg-slate-50/90 backdrop-blur-md sticky top-0 z-20">
           <div className="flex items-center gap-3">
             <button 
               onClick={() => setIsSidebarOpen(true)}
@@ -200,7 +243,7 @@ const ConnectedIndex = () => {
             </div>
           </div>
           
-          <div className="flex items-center gap-2">
+          {/* <div className="flex items-center gap-2">
              <Button 
                variant="outline" 
                size="sm" 
@@ -209,7 +252,7 @@ const ConnectedIndex = () => {
              >
                Admin Panel
              </Button>
-          </div>
+          </div> */}
         </header>
 
         {/* Chat Area */}
@@ -245,7 +288,7 @@ const ConnectedIndex = () => {
           ) : (
             <div className="pb-32">
               {messages.map((msg, i) => (
-                <ChatMessage key={i} index={i} role={msg.role as "user" | "assistant"} content={msg.content} />
+                <ChatMessage key={i} index={i} role={msg.role as "user" | "assistant"} content={msg.content} userName={user?.name} />
               ))}
               {isTyping && <TypingIndicator />}
               <div ref={scrollRef} />
@@ -273,8 +316,7 @@ const ConnectedIndex = () => {
 
             {/* Input Field */}
             <div className="relative group">
-              <div className="absolute -inset-1 bg-gradient-to-r from-primary/20 to-primary/10 rounded-2xl blur opacity-0 group-focus-within:opacity-100 transition duration-500" />
-              <div className="relative flex gap-2 p-1.5 rounded-2xl bg-[#0d1218] border border-border shadow-2xl">
+              <div className="relative flex gap-2 p-1.5 rounded-2xl bg-background border border-border shadow-xl shadow-black/5">
                 <Input
                   value={input}
                   onChange={(e) => setInput(e.target.value)}
@@ -311,10 +353,13 @@ const ConnectedIndex = () => {
       {/* Support Widget */}
       {isSupportOpen && (
         <SupportWidget 
-          sessionId={activeChat || "guest"} 
+          sessionId={activeChat || guestSupportId} 
           onClose={() => setIsSupportOpen(false)} 
         />
       )}
+
+      {/* Login Prompt Modal */}
+      {showLoginPrompt && <LoginPrompt />}
     </div>
   );
 };

@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Sign In</title>
+  <!-- Google Identity Services for ID token -->
+  <script src="https://accounts.google.com/gsi/client" async defer></script>
+  <link rel="stylesheet" href="common.css">
+</head>
+<body>
+  <div class="container">
+    <h1>Sign In to Your Account</h1>
+    <p class="sub">Enter your details below</p>
+
+    <!-- Email/Password Sign In -->
+    <form id="login-form" class="form" onsubmit="return handleLogin(event)">
+      <label for="email">Email</label>
+      <input id="email" type="email" placeholder="anish@semiconspace.com" required />
+
+      <label for="password" style="margin-top: 12px;">Password</label>
+      <input id="password" type="password" placeholder="••••••••" required />
+
+      <div style="margin-top: 16px;">
+        <button class="btn btn-primary" type="submit">Sign in to account</button>
+      </div>
+    </form>
+
+    <div class="center helper">
+      <a href="#" onclick="alert('Implement your Forgot Password page route'); return false;" class="muted">Forget your password?</a>
+    </div>
+
+    <div class="divider">
+      <div class="line"></div>
+      <div class="muted">Or</div>
+      <div class="line"></div>
+    </div>
+
+    <!-- Google Sign In Button will render here -->
+    <div id="googleButton"></div>
+    <div class="center muted" style="margin-top:8px;">If the button doesn't appear, refresh the page.</div>
+
+    <div class="center helper">
+      <span class="muted">Don't have an account? </span>
+      <a href="register.html">Sign Up Now!</a>
+      <br><br>
+      <a href="index.html" class="nav-link">← Back to Home</a>
+    </div>
+
+    <!-- Response Box -->
+    <div class="response" id="out">(waiting)</div>
+  </div>
+
+  <script src="common.js"></script>
+  <script>
+    // ====== Email/Password Login with MFA handling ======
+    async function handleLogin(ev) {
+      ev.preventDefault();
+      const identifier = document.getElementById('email').value.trim();
+      const password = document.getElementById('password').value;
+      lastLoginCreds = { identifier, password };
+      
+      try {
+        const res = await fetch(`${API_BASE}/auth/login`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ identifier, password })
+        });
+        const data = await res.json();
+        setOut({ status: res.status, data });
+
+        if (res.ok && data?.data?.access_token) {
+          try { localStorage.setItem('access_token', data.data.access_token); } catch {}
+          setOut('Login successful! Redirecting to dashboard...');
+          setTimeout(() => navigateTo('welcome.html'), 1500);
+          return false;
+        }
+        
+        // MFA path: authenticator enabled → show QR + verify
+        if (res.ok && data?.data?.mfa_required) {
+          mfaContext = 'login';
+          openMfaPanel(identifier, { showStart: true, autoStart: true });
+        }
+      } catch (e) {
+        setOut({ error: e?.message || String(e) });
+      }
+      return false;
+    }
+  </script>
+</body>
+</html>

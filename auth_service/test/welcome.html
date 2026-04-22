@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Welcome - Dashboard</title>
+  <link rel="stylesheet" href="common.css">
+</head>
+<body>
+  <div class="container">
+    <h1>Welcome to Your Dashboard</h1>
+    <p class="sub">You have successfully authenticated</p>
+
+    <div class="panel">
+      <h3>Account Information</h3>
+      <div id="user-info">
+        <p class="muted">Loading user information...</p>
+      </div>
+    </div>
+
+    <div class="panel">
+      <h3>Quick Actions</h3>
+      
+      <div style="margin: 12px 0;">
+        <button class="btn btn-ghost" onclick="setupMFA()">Setup/Manage 2FA</button>
+      </div>
+      
+      <div style="margin: 12px 0;">
+        <button class="btn btn-ghost" onclick="checkToken()">Verify Token Status</button>
+      </div>
+      
+      <div style="margin: 12px 0;">
+        <button class="btn btn-primary" onclick="logout()">Sign Out</button>
+      </div>
+    </div>
+
+    <div class="center helper">
+      <p class="muted">Your session is active. Token is stored securely in localStorage.</p>
+    </div>
+
+    <!-- Response Box -->
+    <div class="response" id="out">Welcome! You are successfully logged in.</div>
+  </div>
+
+  <script src="common.js"></script>
+  <script>
+    // Check authentication status and load user info
+    window.addEventListener('DOMContentLoaded', async () => {
+      const token = localStorage.getItem('access_token');
+      
+      if (!token) {
+        setOut('No authentication token found. Redirecting to login...');
+        setTimeout(() => navigateTo('login.html'), 2000);
+        return;
+      }
+
+      // Try to fetch user information
+      await loadUserInfo();
+      setOut('Dashboard loaded successfully. You are authenticated.');
+    });
+
+    async function loadUserInfo() {
+      const token = localStorage.getItem('access_token');
+      if (!token) return;
+
+      try {
+        // You can implement a profile endpoint to get user details
+        // For now, we'll just decode the token info (if it's JWT) or show token status
+        const userInfoDiv = document.getElementById('user-info');
+        userInfoDiv.innerHTML = `
+          <div class="kv">
+            <div><strong>Token Status:</strong> Active</div>
+            <div><strong>Login Time:</strong> ${new Date().toLocaleString()}</div>
+            <div><strong>Storage:</strong> localStorage</div>
+          </div>
+        `;
+        
+        // If your backend has a profile endpoint, you could fetch it like this:
+        /*
+        const res = await fetch(`${API_BASE}/auth/profile`, {
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+        if (res.ok) {
+          const userData = await res.json();
+          // Display user data
+        }
+        */
+      } catch (e) {
+        document.getElementById('user-info').innerHTML = `
+          <p class="muted">Could not load user information: ${e.message}</p>
+        `;
+      }
+    }
+
+    function setupMFA() {
+      navigateTo('mfa.html');
+    }
+
+    async function checkToken() {
+      const token = localStorage.getItem('access_token');
+      if (!token) {
+        setOut('No token found');
+        return;
+      }
+
+      try {
+        // You could add a token validation endpoint
+        setOut({
+          token_exists: true,
+          token_length: token.length,
+          stored_at: 'localStorage',
+          status: 'active'
+        });
+      } catch (e) {
+        setOut({ error: 'Token check failed', details: e.message });
+      }
+    }
+
+    function logout() {
+      try {
+        localStorage.removeItem('access_token');
+        sessionStorage.clear(); // Clear any session data
+        setOut('Logged out successfully. Redirecting...');
+        setTimeout(() => navigateTo('index.html'), 1500);
+      } catch (e) {
+        setOut('Logout completed (with minor issues)');
+        setTimeout(() => navigateTo('index.html'), 1500);
+      }
+    }
+  </script>
+</body>
+</html>

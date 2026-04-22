@@ -11,6 +11,7 @@ dist/
 dist-ssr/
 
 # Environment – catch ALL .env files in any subfolder
+**/.env*
 
 # OS / editor
 .DS_Store

@@ -94,7 +94,11 @@ class ChatRepository:
             raise _db_error(exc) from exc
 
     async def add_support_message(self, session_id: str, role: str, content: str) -> bool:
-        """Appends a message to the separate support_messages thread."""
+        """Appends a message to the separate support_messages thread.
+
+        Uses upsert so a brand-new session document is created automatically
+        when the user opens Customer Support before starting an AI chat.
+        """
         now = dt.now(timezone.utc)
         msg = {
             "role": role,
@@ -102,17 +106,22 @@ class ChatRepository:
             "timestamp": now.isoformat()
         }
         try:
-            update = {
+            update: dict = {
                 "$push": {"support_messages": msg},
-                "$set": {"updated_at": now}
+                "$set": {
+                    "updated_at": now,
+                    "is_admin_needed": role != "admin",
+                },
+                "$setOnInsert": {
+                    "session_id": session_id,
+                    "title": "Support Chat",
+                    "created_at": now,
+                    "messages": [],
+                }
             }
-            if role == "user":
-                update["$set"]["is_admin_needed"] = True
-            elif role == "admin":
-                update["$set"]["is_admin_needed"] = False
 
-            result = await self._col().update_one({"session_id": session_id}, update)
-            return result.matched_count > 0
+            await self._col().update_one({"session_id": session_id}, update, upsert=True)
+            return True
         except PyMongoError as exc:
             raise _db_error(exc) from exc
 
@@ -129,6 +138,20 @@ class ChatRepository:
         try:
             cursor = self._col().find(
                 {"is_admin_needed": True},
+                {"_id": 0, "session_id": 1, "title": 1, "updated_at": 1}
+            ).sort("updated_at", -1)
+            return await cursor.to_list(length=limit)
+        except PyMongoError as exc:
+            raise _db_error(exc) from exc
+
+    async def list_resolved_admin(self, limit: int = 50) -> list[dict]:
+        """Return chat sessions where admin help was requested but is now resolved."""
+        try:
+            cursor = self._col().find(
+                {
+                    "support_messages.0": {"$exists": True},
+                    "is_admin_needed": False
+                },
                 {"_id": 0, "session_id": 1, "title": 1, "updated_at": 1}
             ).sort("updated_at", -1)
             return await cursor.to_list(length=limit)

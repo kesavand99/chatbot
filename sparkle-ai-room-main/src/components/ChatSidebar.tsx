@@ -1,4 +1,4 @@
-import { Plus, MessageSquare, Trash2, Bot, Search, X } from "lucide-react";
+import { Plus, MessageSquare, Trash2, Bot, Search, X, LogIn, LogOut } from "lucide-react";
 import { useState, useMemo } from "react";
 import { cn } from "@/lib/utils";
 
@@ -15,9 +15,14 @@ interface ChatSidebarProps {
   onNewChat: () => void;
   onDeleteChat: (id: string) => void;
   isOpen: boolean;
+  userName?: string;
+  userEmail?: string;
+  isLoggedIn?: boolean;
+  onLogin?: () => void;
+  onLogout?: () => void;
 }
 
-const ChatSidebar = ({ chats, activeChat, onSelectChat, onNewChat, onDeleteChat, isOpen }: ChatSidebarProps) => {
+const ChatSidebar = ({ chats, activeChat, onSelectChat, onNewChat, onDeleteChat, isOpen, userName, userEmail, isLoggedIn, onLogin, onLogout }: ChatSidebarProps) => {
   const [searchQuery, setSearchQuery] = useState("");
 
   const filteredChats = useMemo(() => {
@@ -26,10 +31,12 @@ const ChatSidebar = ({ chats, activeChat, onSelectChat, onNewChat, onDeleteChat,
     return chats.filter((chat) => chat.title.toLowerCase().includes(q));
   }, [chats, searchQuery]);
 
+  const userInitial = userName ? userName.charAt(0).toUpperCase() : "?";
+
   return (
     <aside
       className={cn(
-        "fixed left-0 top-0 z-40 h-full w-72 border-r border-border bg-sidebar transition-transform duration-300 flex flex-col",
+        "fixed left-0 top-0 z-40 h-full w-72 border-r border-border bg-slate-50 transition-transform duration-300 flex flex-col",
         isOpen ? "translate-x-0" : "-translate-x-full",
         "lg:relative lg:translate-x-0"
       )}
@@ -52,12 +59,12 @@ const ChatSidebar = ({ chats, activeChat, onSelectChat, onNewChat, onDeleteChat,
       <div className="px-3 pt-4 pb-2">
         <button
           onClick={onNewChat}
-          className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl bg-[#0a0f14] border border-sidebar-border/40 hover:border-primary/40 transition-all duration-200 group"
+          className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl bg-card border border-border shadow-sm hover:border-primary/40 hover:shadow-md transition-all duration-200 group"
         >
-          <div className="w-8 h-8 rounded-lg bg-[#0d2a2d] flex items-center justify-center group-hover:bg-[#123a3d] transition-colors shrink-0 border border-primary/20">
-            <Plus className="w-4 h-4 text-[#2dd4bf]" />
+          <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center group-hover:bg-primary/20 transition-colors shrink-0 border border-primary/20">
+            <Plus className="w-4 h-4 text-primary" />
           </div>
-          <span className="text-sm font-medium text-foreground/90 group-hover:text-foreground transition-colors">New Chat</span>
+          <span className="text-sm font-medium text-foreground/90 group-hover:text-primary transition-colors">New Chat</span>
         </button>
       </div>
 
@@ -125,7 +132,38 @@ const ChatSidebar = ({ chats, activeChat, onSelectChat, onNewChat, onDeleteChat,
       </div>
 
       {/* Footer */}
-      <div className="p-4 border-t border-border space-y-2">
+      <div className="p-4 border-t border-border space-y-3">
+        {/* Auth section */}
+        {isLoggedIn ? (
+          <div className="flex items-center gap-3">
+            <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-primary to-blue-600 flex items-center justify-center text-white text-xs font-bold shrink-0">
+              {userInitial}
+            </div>
+            <div className="min-w-0 flex-1">
+              <p className="text-xs font-medium text-foreground truncate">{userName}</p>
+              <p className="text-[10px] text-muted-foreground truncate">{userEmail}</p>
+            </div>
+            <button
+              onClick={onLogout}
+              className="p-1.5 rounded-lg text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-all"
+              title="Logout"
+            >
+              <LogOut className="w-4 h-4" />
+            </button>
+          </div>
+        ) : (
+          <button
+            onClick={onLogin}
+            className="w-full flex items-center gap-2.5 px-3 py-2.5 rounded-xl bg-primary/5 border border-primary/20 hover:bg-primary/10 hover:border-primary/30 transition-all group"
+          >
+            <div className="w-7 h-7 rounded-lg bg-primary/10 flex items-center justify-center group-hover:bg-primary/20 transition-colors">
+              <LogIn className="w-3.5 h-3.5 text-primary" />
+            </div>
+            <span className="text-xs font-medium text-primary">Sign in with Google</span>
+          </button>
+        )}
+
+        {/* Status */}
         <div className="flex items-center gap-2 text-[11px] text-muted-foreground">
           <div className="w-1.5 h-1.5 rounded-full bg-green-500" />
           Model Online
@@ -146,3 +184,4 @@ const ChatSidebar = ({ chats, activeChat, onSelectChat, onNewChat, onDeleteChat,
 };
 
 export default ChatSidebar;
+

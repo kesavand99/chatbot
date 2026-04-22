@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Admin Sign In</title>
+  <link rel="stylesheet" href="common.css">
+</head>
+<body>
+  <div class="container">
+    <h1>Admin Sign In</h1>
+    <p class="sub">Enter your admin credentials below</p>
+
+    <!-- Admin Email/Password Sign In -->
+    <form id="admin-login-form" class="form" onsubmit="return handleAdminLogin(event)">
+      <label for="admin-email">Admin Email</label>
+      <input id="admin-email" type="email" placeholder="admin@semiconspace.com" required />
+
+      <label for="admin-password" style="margin-top: 12px;">Password</label>
+      <input id="admin-password" type="password" placeholder="••••••••" required />
+
+      <div style="margin-top: 16px;">
+        <button class="btn btn-primary" type="submit">Sign in as Admin</button>
+      </div>
+    </form>
+
+    <div class="center helper">
+      <a href="#" onclick="alert('Implement your Forgot Password page route'); return false;" class="muted">Forget your password?</a>
+    </div>
+
+    <div class="center helper">
+      <span class="muted">Need regular user access? </span>
+      <a href="login.html">User Login</a>
+      <br><br>
+      <a href="index.html" class="nav-link">← Back to Home</a>
+    </div>
+
+    <!-- Response Box -->
+    <div class="response" id="out">(waiting)</div>
+  </div>
+
+  <script src="common.js"></script>
+  <script>
+    // ====== Admin Email/Password Login with MFA handling ======
+    async function handleAdminLogin(ev) {
+      ev.preventDefault();
+      const identifier = document.getElementById('admin-email').value.trim();
+      const password = document.getElementById('admin-password').value;
+      lastLoginCreds = { identifier, password };
+      
+      try {
+        const res = await fetch(`${API_BASE}/auth/admin_login`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ identifier, password })
+        });
+        const data = await res.json();
+        setOut({ status: res.status, data });
+
+        if (res.ok && data?.data?.access_token) {
+          try { localStorage.setItem('access_token', data.data.access_token); } catch {}
+          setOut('Admin login successful! Redirecting to dashboard...');
+          setTimeout(() => navigateTo('welcome.html'), 1500);
+          return false;
+        }
+        
+        // MFA path: authenticator enabled → show QR + verify
+        if (res.ok && data?.data?.mfa_required) {
+          mfaContext = 'admin_login';
+          openMfaPanel(identifier, { showStart: true, autoStart: true });
+        }
+      } catch (e) {
+        setOut({ error: e?.message || String(e) });
+      }
+      return false;
+    }
+  </script>
+</body>
+</html>

@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Create Account</title>
+  <link rel="stylesheet" href="common.css">
+</head>
+<body>
+  <div class="container">
+    <h1>Create Your Account</h1>
+    <p class="sub">Fill in your details to get started</p>
+
+    <!-- Registration Form -->
+    <form id="register-form" onsubmit="return handleRegister(event)">
+      <label for="rfirst">First Name</label>
+      <input id="rfirst" required />
+
+      <label for="rlast">Last Name</label>
+      <input id="rlast" required />
+
+      <label for="remail">Email</label>
+      <input id="remail" type="email" required />
+
+      <label for="rphone">Phone</label>
+      <input id="rphone" required />
+
+      <label for="rpass">Password</label>
+      <input id="rpass" type="password" required />
+
+      <label for="rrole">Role ID</label>
+      <input id="rrole" type="number" value="2" required />
+
+      <label style="display:flex; align-items:center; gap:8px; margin-top:8px; font-weight:500;">
+        <input id="rwant_mfa" type="checkbox" />
+        Enable 2FA (TOTP) now
+      </label>
+
+      <div class="form-actions">
+        <button class="btn btn-primary" type="submit">Create account</button>
+        <button class="btn btn-ghost" type="button" onclick="navigateTo('login.html')">Cancel</button>
+      </div>
+    </form>
+
+    <div class="center helper">
+      <span class="muted">Already have an account? </span>
+      <a href="login.html">Sign In Instead</a>
+    </div>
+
+    <!-- Response Box -->
+    <div class="response" id="out">(waiting)</div>
+  </div>
+
+  <script src="common.js"></script>
+  <script>
+    // Pre-fill email from URL parameter if available
+    window.addEventListener('DOMContentLoaded', () => {
+      const urlParams = new URLSearchParams(window.location.search);
+      const email = urlParams.get('email');
+      if (email) {
+        document.getElementById('remail').value = email;
+      }
+    });
+
+    // ====== Standard Registration with checkbox-driven MFA handling ======
+    async function handleRegister(ev) {
+      ev.preventDefault();
+      const payload = {
+        first_name: document.getElementById('rfirst').value.trim(),
+        last_name: document.getElementById('rlast').value.trim(),
+        email: document.getElementById('remail').value.trim(),
+        phone: document.getElementById('rphone').value.trim(),
+        password: document.getElementById('rpass').value,
+        role_id: parseInt(document.getElementById('rrole').value, 10),
+      };
+      const wantMfa = document.getElementById('rwant_mfa').checked;
+      
+      // Save creds so we can log in after verify if backend doesn't return token
+      lastRegisterCreds = { identifier: payload.email, password: payload.password };
+
+      try {
+        const res = await fetch(`${API_BASE}/auth/register`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ ...payload, mfa_required: wantMfa })
+        });
+        const data = await res.json();
+        setOut({ status: res.status, data });
+        if (!res.ok) return false;
+
+        // If backend enforces MFA via env, it returns mfa_required
+        if (data?.data?.mfa_required) {
+          // Respect server-provided purpose hint; default to 'register'
+          mfaContext = (data?.data?.purpose === 'login' || data?.data?.purpose === 'register') ? data.data.purpose : 'register';
+          const identifier = data?.data?.identifier || payload.email;
+          openMfaPanel(identifier, { showStart: true, autoStart: true });
+          return false;
+        }
+
+        // If user opted-in for MFA (checkbox) and backend didn't require it automatically
+        if (wantMfa) {
+          // Treat this as a post-registration MFA enablement, not a pending registration
+          mfaContext = 'login';
+          openMfaPanel(payload.email, { showStart: true, autoStart: true });
+          return false;
+        }
+
+        // Otherwise token returned as usual
+        if (data?.data?.access_token) {
+          try { localStorage.setItem('access_token', data.data.access_token); } catch {}
+          setOut('Registration successful! Redirecting to dashboard...');
+          setTimeout(() => navigateTo('welcome.html'), 1500);
+        }
+      } catch (e) {
+        setOut({ error: e?.message || String(e) });
+      }
+      return false;
+    }
+  </script>
+</body>
+</html>

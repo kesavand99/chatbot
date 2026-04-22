@@ -242,6 +242,23 @@ class ChatService:
         except ChatRepositoryError as exc:
             raise ChatServiceError(message=exc.message, status_code=exc.status_code) from exc
 
+    async def list_resolved_admin(self) -> ChatListResponse:
+        try:
+            chats = await self.repo.list_resolved_admin()
+            return ChatListResponse(
+                chats=[
+                    ChatSummary(
+                        session_id=c["session_id"],
+                        title=c.get("title") or "Resolved Support",
+                        created_at=c.get("updated_at") or dt.now(timezone.utc),
+                        updated_at=c.get("updated_at") or dt.now(timezone.utc),
+                    )
+                    for c in chats
+                ]
+            )
+        except ChatRepositoryError as exc:
+            raise ChatServiceError(message=exc.message, status_code=exc.status_code) from exc
+
     async def answer_as_admin(self, session_id: str, content: str) -> None:
         try:
             found = await self.repo.add_support_message(session_id, "admin", content)
@@ -255,12 +272,7 @@ class ChatService:
 
     async def add_support_message(self, session_id: str, content: str) -> None:
         try:
-            found = await self.repo.add_support_message(session_id, "user", content)
-            if not found:
-                raise ChatServiceError(
-                    message="Chat session not found.",
-                    status_code=status.HTTP_404_NOT_FOUND,
-                )
+            await self.repo.add_support_message(session_id, "user", content)
         except ChatRepositoryError as exc:
             raise ChatServiceError(message=exc.message, status_code=exc.status_code) from exc
 

@@ -2,6 +2,10 @@ const API_BASE_URL =
   (import.meta.env.VITE_API_BASE_URL as string | undefined)?.replace(/\/$/, "") ||
   "http://localhost:8000";
 
+const AUTH_BASE_URL =
+  (import.meta.env.VITE_AUTH_BASE_URL as string | undefined)?.replace(/\/$/, "") ||
+  "http://localhost:8001";
+
 const WS_BASE_URL = API_BASE_URL.replace(/^http/i, "ws");
 
 export interface ApiMessage {
@@ -74,6 +78,10 @@ export function listPendingAdmin() {
   return request<{ chats: ChatSummary[] }>("/admin/pending");
 }
 
+export function listResolvedAdmin() {
+  return request<{ chats: ChatSummary[] }>("/admin/resolved");
+}
+
 export function answerAsAdmin(sessionId: string, message: string) {
   return request<{ status: string }>(`/admin/answer/${sessionId}`, {
     method: "POST",
@@ -96,4 +104,38 @@ export function sendSupportMessage(sessionId: string, message: string) {
 
 export function fetchSupportMessages(sessionId: string) {
   return request<ApiMessage[]>(`/chat/${sessionId}/support`);
+}
+
+// ─── Auth Service helpers ─────────────────────────────────────
+export interface AuthUser {
+  name: string;
+  email: string;
+  token: string;
+  userId: string;
+}
+
+export async function fetchGoogleConfig(): Promise<{ client_id: string }> {
+  const res = await fetch(`${AUTH_BASE_URL}/auth/google/config`);
+  if (!res.ok) throw new Error("Failed to fetch Google config");
+  return res.json();
+}
+
+export async function googleAuthenticate(idToken: string): Promise<AuthUser> {
+  const res = await fetch(`${AUTH_BASE_URL}/auth/googleauthentication`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ id_token: idToken }),
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.detail || "Google authentication failed");
+  }
+  const json = await res.json();
+  const d = json.data;
+  return {
+    name: [d.first_name, d.last_name].filter(Boolean).join(" ") || d.email,
+    email: d.email,
+    token: d.access_token,
+    userId: d.userId,
+  };
 }
