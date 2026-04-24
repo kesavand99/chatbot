@@ -93,7 +93,7 @@ class ChatRepository:
         except PyMongoError as exc:
             raise _db_error(exc) from exc
 
-    async def add_support_message(self, session_id: str, role: str, content: str) -> bool:
+    async def add_support_message(self, session_id: str, role: str, content: str, user_name: str | None = None) -> bool:
         """Appends a message to the separate support_messages thread.
 
         Uses upsert so a brand-new session document is created automatically
@@ -114,7 +114,7 @@ class ChatRepository:
                 },
                 "$setOnInsert": {
                     "session_id": session_id,
-                    "title": "Support Chat",
+                    "title": user_name or "Support Chat",
                     "created_at": now,
                     "messages": [],
                 }

@@ -354,7 +354,9 @@ const ConnectedIndex = () => {
       {isSupportOpen && (
         <SupportWidget 
           sessionId={activeChat || guestSupportId} 
+          localChats={chats}
           onClose={() => setIsSupportOpen(false)} 
+          onChatCreated={loadChats}
         />
       )}
 

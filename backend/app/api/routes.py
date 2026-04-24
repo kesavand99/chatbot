@@ -90,7 +90,7 @@ async def close_ticket(session_id: str):
 @router.post("/chat/{session_id}/support", status_code=status.HTTP_200_OK)
 async def add_support_message(session_id: str, payload: ChatRequest):
     try:
-        await chat_service.add_support_message(session_id, payload.message)
+        await chat_service.add_support_message(session_id, payload.message, payload.user_name)
         return {"status": "success"}
     except ChatServiceError as exc:
         raise HTTPException(status_code=exc.status_code, detail=exc.message) from exc

@@ -13,7 +13,7 @@ class Settings(BaseSettings):
     
     mongodb_uri: str = "mongodb://localhost:27017/"
     mongodb_db: str = "ai_chatbot"
-    client_origins: str = "http://localhost:5173,http://localhost:8080,http://127.0.0.1:8080,http://192.168.0.17:8080/"
+    client_origins: str = "http://localhost:5173,http://localhost:8080,http://127.0.0.1:8080,http://192.168.0.19:8080/"
 
     # SMTP Settings
     smtp_host: str = "smtp.gmail.com"

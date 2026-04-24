@@ -1,11 +1,26 @@
 import { useState, useEffect, useRef } from "react";
-import { X, Send, Headset, ChevronRight, Cpu, Zap, ChevronLeft, MessageCircle, HelpCircle, ArrowLeft } from "lucide-react";
-import { fetchSupportMessages, sendSupportMessage, type ApiMessage } from "@/lib/chat-api";
+import { X, Send, Headset, ChevronRight, Cpu, Zap, ChevronLeft, MessageCircle, HelpCircle, ArrowLeft, Clock } from "lucide-react";
+
+// Simple UUID fallback for non-secure contexts
+const generateId = () => {
+  try {
+    return crypto.randomUUID();
+  } catch (e) {
+    return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
+      const r = Math.random() * 16 | 0, v = c === 'x' ? r : (r & 0x3 | 0x8);
+      return v.toString(16);
+    });
+  }
+};
+import { fetchSupportMessages, sendSupportMessage, formatTimestamp, type ApiMessage } from "@/lib/chat-api";
 import { toast } from "sonner";
+import { useAuth } from "@/contexts/AuthContext";
 
 interface SupportWidgetProps {
   sessionId: string;
+  localChats?: any[];
   onClose: () => void;
+  onChatCreated?: () => void;
 }
 
 interface MenuItem {
@@ -50,8 +65,8 @@ const SUPPORT_FLOW: MenuItem[] = [
   }
 ];
 
-const SupportWidget = ({ sessionId, onClose }: SupportWidgetProps) => {
-  const [view, setView] = useState<"menu" | "chat">("menu");
+const SupportWidget = ({ sessionId, localChats, onClose, onChatCreated }: SupportWidgetProps) => {
+  const [view, setView] = useState<"menu" | "chat" | "history">("menu");
   const [menuStack, setMenuStack] = useState<MenuItem[][]>([SUPPORT_FLOW]);
   const [selectedItem, setSelectedItem] = useState<MenuItem | null>(null);
   const [typingItem, setTypingItem] = useState<string>("");
@@ -59,6 +74,14 @@ const SupportWidget = ({ sessionId, onClose }: SupportWidgetProps) => {
   const [input, setInput] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
+  const { user } = useAuth();
+  
+  const [overrideSessionId, setOverrideSessionId] = useState<string | null>(null);
+  const activeSessionId = overrideSessionId || sessionId;
+
+  useEffect(() => {
+    setOverrideSessionId(null);
+  }, [sessionId]);
 
   const currentMenu = menuStack[menuStack.length - 1];
 
@@ -68,7 +91,7 @@ const SupportWidget = ({ sessionId, onClose }: SupportWidgetProps) => {
       const interval = setInterval(loadMessages, 3000);
       return () => clearInterval(interval);
     }
-  }, [sessionId, view]);
+  }, [activeSessionId, view]);
 
   useEffect(() => {
     scrollRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -76,7 +99,7 @@ const SupportWidget = ({ sessionId, onClose }: SupportWidgetProps) => {
 
   const loadMessages = async () => {
     try {
-      const data = await fetchSupportMessages(sessionId);
+      const data = await fetchSupportMessages(activeSessionId);
       setMessages(data);
       if (data.length > 0) setView("chat");
     } catch (error) {
@@ -121,8 +144,12 @@ const SupportWidget = ({ sessionId, onClose }: SupportWidgetProps) => {
     setInput("");
     setIsLoading(true);
     try {
-      await sendSupportMessage(sessionId, text);
-      setMessages([...messages, { role: "user", content: text }]);
+      await sendSupportMessage(activeSessionId, text, user?.name);
+      setMessages([...messages, { role: "user", content: text, timestamp: new Date().toISOString() }]);
+      if (messages.length === 0 && onChatCreated) {
+        // Now that the session is truly created in DB, force a reload of the sidebar
+        onChatCreated();
+      }
     } catch (error) {
       toast.error("Failed to send message");
     } finally {
@@ -175,31 +202,92 @@ const SupportWidget = ({ sessionId, onClose }: SupportWidgetProps) => {
             </div>
           </div>
         </div>
-        <button
-          onClick={onClose}
-          style={{
-            width: "32px",
-            height: "32px",
-            borderRadius: "8px",
-            border: "none",
-            background: "rgba(255,255,255,0.15)",
-            color: "#fff",
-            cursor: "pointer",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            transition: "background 0.2s",
-          }}
-          onMouseEnter={(e) => (e.currentTarget.style.background = "rgba(255,255,255,0.3)")}
-          onMouseLeave={(e) => (e.currentTarget.style.background = "rgba(255,255,255,0.15)")}
-        >
-          <X className="w-4 h-4" />
-        </button>
+        <div style={{ display: "flex", gap: "8px" }}>
+          <button
+            onClick={() => setView(view === "history" ? "menu" : "history")}
+            title="Past Tickets"
+            style={{
+              width: "32px",
+              height: "32px",
+              borderRadius: "8px",
+              border: "none",
+              background: "rgba(255,255,255,0.15)",
+              color: "#fff",
+              cursor: "pointer",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              transition: "background 0.2s",
+            }}
+            onMouseEnter={(e) => (e.currentTarget.style.background = "rgba(255,255,255,0.3)")}
+            onMouseLeave={(e) => (e.currentTarget.style.background = "rgba(255,255,255,0.15)")}
+          >
+            <Clock className="w-4 h-4" />
+          </button>
+          <button
+            onClick={onClose}
+            style={{
+              width: "32px",
+              height: "32px",
+              borderRadius: "8px",
+              border: "none",
+              background: "rgba(255,255,255,0.15)",
+              color: "#fff",
+              cursor: "pointer",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              transition: "background 0.2s",
+            }}
+            onMouseEnter={(e) => (e.currentTarget.style.background = "rgba(255,255,255,0.3)")}
+            onMouseLeave={(e) => (e.currentTarget.style.background = "rgba(255,255,255,0.15)")}
+          >
+            <X className="w-4 h-4" />
+          </button>
+        </div>
       </div>
 
       {/* ── Body ── */}
       <div style={{ flex: 1, overflow: "hidden", display: "flex", flexDirection: "column" }}>
-        {view === "menu" ? (
+        {view === "history" ? (
+            <div style={{ flex: 1, overflowY: "auto", padding: "16px" }}>
+                <div style={{ fontSize: "14px", fontWeight: 600, color: "#1e293b", marginBottom: "12px" }}>
+                    Past Support Tickets
+                </div>
+                <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
+                    {localChats?.filter(c => c.title.toLowerCase().includes("support") || c.id.startsWith("support_")).map(c => (
+                        <div 
+                          key={c.id}
+                          onClick={() => {
+                              setOverrideSessionId(c.id);
+                              setView("chat");
+                          }}
+                          style={{
+                              padding: "12px",
+                              background: "#f8fafc",
+                              borderRadius: "12px",
+                              cursor: "pointer",
+                              border: "1px solid #e2e8f0",
+                              transition: "all 0.2s"
+                          }}
+                          onMouseEnter={(e) => { e.currentTarget.style.borderColor = "#93c5fd"; e.currentTarget.style.background = "#eff6ff"; }}
+                          onMouseLeave={(e) => { e.currentTarget.style.borderColor = "#e2e8f0"; e.currentTarget.style.background = "#f8fafc"; }}
+                        >
+                            <div style={{ fontSize: "13px", fontWeight: 600, color: "#334155" }}>{c.title}</div>
+                            <div style={{ fontSize: "11px", color: "#64748b", marginTop: "4px" }}>
+                                {c.date} • {c.id.substring(0,8)}...
+                            </div>
+                        </div>
+                    ))}
+                    {(!localChats || localChats.filter(c => c.title.toLowerCase().includes("support") || c.id.startsWith("support_")).length === 0) && (
+                        <div style={{ fontSize: "13px", color: "#64748b", textAlign: "center", padding: "32px 0" }}>
+                            <Clock className="w-8 h-8 opacity-20 mx-auto mb-3" />
+                            No past tickets found.
+                        </div>
+                    )}
+                </div>
+            </div>
+        ) : view === "menu" ? (
           <div style={{ flex: 1, overflowY: "auto", padding: "16px 16px 20px" }}>
             {/* Back button */}
             {(menuStack.length > 1 || selectedItem) && (
@@ -386,117 +474,174 @@ const SupportWidget = ({ sessionId, onClose }: SupportWidgetProps) => {
                 {messages.map((msg, i) => (
                   <div
                     key={i}
-                    style={{
-                      display: "flex",
-                      justifyContent: msg.role === "user" ? "flex-end" : "flex-start",
-                      alignItems: "flex-start",
-                      gap: "8px",
-                    }}
+                    className="flex flex-col gap-1 w-full"
+                    style={{ alignItems: msg.role === "user" ? "flex-end" : "flex-start" }}
                   >
-                    {msg.role !== "user" && (
-                      <div
-                        style={{
-                          width: "28px",
-                          height: "28px",
-                          borderRadius: "50%",
-                          background: "linear-gradient(135deg, #0ea5e9, #2563eb)",
-                          display: "flex",
-                          alignItems: "center",
-                          justifyContent: "center",
-                          flexShrink: 0,
-                          marginTop: "2px",
-                        }}
-                      >
-                        <Headset className="w-3.5 h-3.5" style={{ color: "#fff" }} />
-                      </div>
-                    )}
                     <div
                       style={{
-                        maxWidth: "80%",
-                        padding: "10px 14px",
-                        fontSize: "13px",
-                        lineHeight: 1.6,
-                        ...(msg.role === "user"
-                          ? {
-                              background: "linear-gradient(135deg, #0ea5e9, #2563eb)",
-                              color: "#fff",
-                              borderRadius: "16px 4px 16px 16px",
-                            }
-                          : {
-                              background: "#f1f5f9",
-                              color: "#334155",
-                              borderRadius: "4px 16px 16px 16px",
-                            }),
+                        display: "flex",
+                        justifyContent: msg.role === "user" ? "flex-end" : "flex-start",
+                        alignItems: "flex-start",
+                        gap: "8px",
                       }}
                     >
-                      {msg.content}
+                      {msg.role !== "user" && (
+                        <div
+                          style={{
+                            width: "28px",
+                            height: "28px",
+                            borderRadius: "50%",
+                            background: "linear-gradient(135deg, #0ea5e9, #2563eb)",
+                            display: "flex",
+                            alignItems: "center",
+                            justifyContent: "center",
+                            flexShrink: 0,
+                            marginTop: "2px",
+                          }}
+                        >
+                          <Headset className="w-3.5 h-3.5" style={{ color: "#fff" }} />
+                        </div>
+                      )}
+                      <div
+                        style={{
+                          maxWidth: "80%",
+                          padding: "10px 14px",
+                          fontSize: "13px",
+                          lineHeight: 1.6,
+                          ...(msg.role === "user"
+                            ? {
+                                background: "linear-gradient(135deg, #0ea5e9, #2563eb)",
+                                color: "#fff",
+                                borderRadius: "16px 4px 16px 16px",
+                              }
+                            : {
+                                background: "#f1f5f9",
+                                color: "#334155",
+                                borderRadius: "4px 16px 16px 16px",
+                              }),
+                        }}
+                      >
+                        {msg.content}
+                      </div>
                     </div>
+                    {msg.timestamp && (
+                      <div
+                        style={{
+                          fontSize: "10px",
+                          color: "#94a3b8",
+                          marginRight: msg.role === "user" ? "4px" : "0",
+                          marginLeft: msg.role !== "user" ? "36px" : "0",
+                        }}
+                      >
+                        {formatTimestamp(msg.timestamp)}
+                      </div>
+                    )}
                   </div>
                 ))}
                 <div ref={scrollRef} />
               </div>
             </div>
 
-            {/* ── Chat input ── */}
-            <div style={{ padding: "12px 16px 16px", borderTop: "1px solid #f1f5f9" }}>
-              <div
-                style={{
-                  display: "flex",
-                  gap: "8px",
-                  alignItems: "center",
-                }}
-              >
-                <input
-                  value={input}
-                  onChange={(e) => setInput(e.target.value)}
-                  placeholder="Type your message..."
-                  onKeyDown={(e) => e.key === "Enter" && handleSend()}
-                  disabled={isLoading}
-                  style={{
-                    flex: 1,
-                    height: "40px",
-                    padding: "0 14px",
-                    fontSize: "13px",
-                    borderRadius: "12px",
-                    border: "1px solid #e2e8f0",
-                    background: "#f8fafc",
-                    color: "#1e293b",
-                    outline: "none",
-                    transition: "border-color 0.2s, box-shadow 0.2s",
-                  }}
-                  onFocus={(e) => {
-                    e.currentTarget.style.borderColor = "#93c5fd";
-                    e.currentTarget.style.boxShadow = "0 0 0 3px rgba(37,99,235,0.1)";
-                  }}
-                  onBlur={(e) => {
-                    e.currentTarget.style.borderColor = "#e2e8f0";
-                    e.currentTarget.style.boxShadow = "none";
-                  }}
-                />
+            {/* ── Chat input / Closed State ── */}
+            {messages.some((m) => m.role === "admin" && m.content === "This support ticket has been closed. Thank you!") ? (
+              <div style={{ padding: "16px", textAlign: "center", borderTop: "1px solid #f1f5f9" }}>
+                <div style={{ fontSize: "12px", color: "#64748b", marginBottom: "12px" }}>
+                  This support ticket has been closed.
+                </div>
                 <button
-                  onClick={handleSend}
-                  disabled={isLoading || !input.trim()}
-                  style={{
-                    width: "40px",
-                    height: "40px",
-                    borderRadius: "12px",
-                    border: "none",
-                    background: !input.trim() || isLoading
-                      ? "#e2e8f0"
-                      : "linear-gradient(135deg, #0ea5e9, #2563eb)",
-                    color: !input.trim() || isLoading ? "#94a3b8" : "#fff",
-                    cursor: !input.trim() || isLoading ? "not-allowed" : "pointer",
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    flexShrink: 0,
-                    transition: "all 0.2s",
+                  onClick={() => {
+                    const newId = "support_" + generateId();
+                    try {
+                      const localChats = JSON.parse(localStorage.getItem("nexus_local_chats") || "[]");
+                      localStorage.setItem("nexus_local_chats", JSON.stringify([newId, ...localChats]));
+                    } catch(e) {}
+                    
+                    setOverrideSessionId(newId);
+                    setMessages([]);
+                    setView("menu");
+                    setMenuStack([SUPPORT_FLOW]);
+                    setSelectedItem(null);
+                    if (onChatCreated) onChatCreated();
                   }}
+                  style={{
+                    background: "linear-gradient(135deg, #0ea5e9, #2563eb)",
+                    color: "#fff",
+                    border: "none",
+                    padding: "10px 20px",
+                    borderRadius: "12px",
+                    fontSize: "14px",
+                    fontWeight: 600,
+                    cursor: "pointer",
+                    boxShadow: "0 4px 12px rgba(14, 165, 233, 0.25)",
+                    transition: "all 0.2s ease"
+                  }}
+                  onMouseOver={(e) => (e.currentTarget.style.transform = "translateY(-1px)")}
+                  onMouseOut={(e) => (e.currentTarget.style.transform = "translateY(0)")}
                 >
-                  <Send className="w-4 h-4" />
+                  Start New Chat
                 </button>
               </div>
-            </div>
+            ) : (
+              <div style={{ padding: "12px 16px 16px", borderTop: "1px solid #f1f5f9" }}>
+                <div
+                  style={{
+                    display: "flex",
+                    gap: "8px",
+                    alignItems: "center",
+                  }}
+                >
+                  <input
+                    value={input}
+                    onChange={(e) => setInput(e.target.value)}
+                    placeholder="Type your message..."
+                    onKeyDown={(e) => e.key === "Enter" && handleSend()}
+                    disabled={isLoading}
+                    style={{
+                      flex: 1,
+                      height: "40px",
+                      padding: "0 14px",
+                      fontSize: "13px",
+                      borderRadius: "12px",
+                      border: "1px solid #e2e8f0",
+                      background: "#f8fafc",
+                      color: "#1e293b",
+                      outline: "none",
+                      transition: "border-color 0.2s, box-shadow 0.2s",
+                    }}
+                    onFocus={(e) => {
+                      e.currentTarget.style.borderColor = "#93c5fd";
+                      e.currentTarget.style.boxShadow = "0 0 0 3px rgba(37,99,235,0.1)";
+                    }}
+                    onBlur={(e) => {
+                      e.currentTarget.style.borderColor = "#e2e8f0";
+                      e.currentTarget.style.boxShadow = "none";
+                    }}
+                  />
+                  <button
+                    onClick={handleSend}
+                    disabled={isLoading || !input.trim()}
+                    style={{
+                      width: "40px",
+                      height: "40px",
+                      borderRadius: "12px",
+                      border: "none",
+                      background: !input.trim() || isLoading
+                        ? "#e2e8f0"
+                        : "linear-gradient(135deg, #0ea5e9, #2563eb)",
+                      color: !input.trim() || isLoading ? "#94a3b8" : "#fff",
+                      cursor: !input.trim() || isLoading ? "not-allowed" : "pointer",
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      flexShrink: 0,
+                      transition: "all 0.2s",
+                    }}
+                  >
+                    <Send className="w-4 h-4" />
+                  </button>
+                </div>
+              </div>
+            )}
           </>
         )}
       </div>

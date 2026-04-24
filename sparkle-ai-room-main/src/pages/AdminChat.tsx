@@ -6,6 +6,7 @@ import {
   fetchSupportMessages, 
   answerAsAdmin, 
   closeTicket,
+  formatTimestamp,
   type ChatSummary, 
   type ApiMessage 
 } from "@/lib/chat-api";
@@ -104,7 +105,7 @@ const AdminChat = () => {
       setReply("");
       // Update local messages
       messageCountRef.current += 1;
-      setMessages([...messages, { role: "admin", content: reply }]);
+      setMessages([...messages, { role: "admin", content: reply, timestamp: new Date().toISOString() }]);
       loadData();
     } catch (error) {
       toast.error("Failed to send answer");
@@ -282,6 +283,7 @@ const AdminChat = () => {
                         </div>
                         <span className="text-[9px] text-muted-foreground mt-1.5 px-1 font-medium opacity-60 uppercase tracking-tighter">
                             {msg.role === "admin" ? "Agent Response" : "User Message"}
+                            {msg.timestamp ? ` • ${formatTimestamp(msg.timestamp)}` : ""}
                         </span>
                     </div>
                   </div>

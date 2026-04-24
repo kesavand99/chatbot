@@ -270,9 +270,9 @@ class ChatService:
         except ChatRepositoryError as exc:
             raise ChatServiceError(message=exc.message, status_code=exc.status_code) from exc
 
-    async def add_support_message(self, session_id: str, content: str) -> None:
+    async def add_support_message(self, session_id: str, content: str, user_name: str | None = None) -> None:
         try:
-            await self.repo.add_support_message(session_id, "user", content)
+            await self.repo.add_support_message(session_id, "user", content, user_name)
         except ChatRepositoryError as exc:
             raise ChatServiceError(message=exc.message, status_code=exc.status_code) from exc
 

@@ -95,15 +95,35 @@ export function closeTicket(sessionId: string) {
   });
 }
 
-export function sendSupportMessage(sessionId: string, message: string) {
+export function sendSupportMessage(sessionId: string, message: string, userName?: string) {
   return request<{ status: string }>(`/chat/${sessionId}/support`, {
     method: "POST",
-    body: JSON.stringify({ session_id: sessionId, message }),
+    body: JSON.stringify({ session_id: sessionId, message, user_name: userName }),
   });
 }
 
 export function fetchSupportMessages(sessionId: string) {
   return request<ApiMessage[]>(`/chat/${sessionId}/support`);
+}
+
+/** Formats ISO string to 'DD/MM/YYYY hh:mm a/pm' */
+export function formatTimestamp(isoString?: string): string {
+  if (!isoString) return "";
+  const d = new Date(isoString);
+  if (isNaN(d.getTime())) return "";
+  
+  const day = d.getDate().toString().padStart(2, "0");
+  const month = (d.getMonth() + 1).toString().padStart(2, "0");
+  const year = d.getFullYear();
+  
+  let hours = d.getHours();
+  const minutes = d.getMinutes().toString().padStart(2, "0");
+  const ampm = hours >= 12 ? "pm" : "am";
+  
+  hours = hours % 12;
+  hours = hours ? hours : 12; // the hour '0' should be '12'
+  
+  return `${day}/${month}/${year} ${hours}.${minutes} ${ampm}`;
 }
 
 // ─── Auth Service helpers ─────────────────────────────────────
