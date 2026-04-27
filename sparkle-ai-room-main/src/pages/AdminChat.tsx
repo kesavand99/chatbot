@@ -16,6 +16,7 @@ import ChatMessage from "@/components/ChatMessage";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Card } from "@/components/ui/card";
 import { Headset, User } from "lucide-react";
+import { useAuth } from "@/contexts/AuthContext";
 
 const AdminChat = () => {
   const [pendingChats, setPendingChats] = useState<ChatSummary[]>([]);
@@ -29,6 +30,15 @@ const AdminChat = () => {
 
   const pendingCountRef = useRef(0);
   const messageCountRef = useRef(0);
+
+  const { admin: user, logout, renderGoogleButton, gisReady } = useAuth();
+  const googleBtnRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!user && gisReady && googleBtnRef.current) {
+      renderGoogleButton(googleBtnRef.current);
+    }
+  }, [user, gisReady, renderGoogleButton]);
 
   useEffect(() => {
     loadData();
@@ -128,6 +138,32 @@ const AdminChat = () => {
     }
   };
 
+  if (!user) {
+    return (
+      <div className="flex h-screen items-center justify-center bg-background">
+        <div className="flex flex-col items-center gap-6 p-8 bg-white border border-border/50 shadow-2xl rounded-3xl max-w-sm w-full mx-4">
+          <div className="w-16 h-16 rounded-2xl flex items-center justify-center bg-primary/10">
+            <Headset className="w-8 h-8 text-primary" />
+          </div>
+          <div className="text-center">
+            <h1 className="text-2xl font-bold mb-2">Admin Access</h1>
+            <p className="text-sm text-muted-foreground">Sign in with an authorized Google account to continue.</p>
+          </div>
+          <div className="w-full flex justify-center py-2 min-h-[44px]">
+            {gisReady ? (
+              <div ref={googleBtnRef} />
+            ) : (
+              <div className="text-xs text-muted-foreground flex items-center gap-2">
+                <div className="w-4 h-4 border-2 border-primary/30 border-t-primary rounded-full animate-spin" />
+                Loading Google Sign-In...
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="flex h-screen bg-background text-foreground">
       {/* Sidebar */}
@@ -142,10 +178,27 @@ const AdminChat = () => {
               <p className="text-[10px] text-muted-foreground uppercase tracking-widest font-bold">Support Center</p>
             </div>
           </div>
-          <div className="flex gap-2">
-            <Button variant="outline" size="sm" className="flex-1 h-8 text-[10px]" onClick={loadData}>
-              Refresh
-            </Button>
+          <div className="flex flex-col gap-3">
+            <div className="flex justify-between items-center bg-muted/30 p-2 rounded-lg border border-border/50">
+              <div className="flex items-center gap-2 overflow-hidden">
+                {user?.picture ? (
+                  <img src={user.picture} alt="Profile" className="w-6 h-6 rounded-full shrink-0" />
+                ) : (
+                  <div className="w-6 h-6 rounded-full bg-primary/20 flex items-center justify-center shrink-0">
+                    <User className="w-3 h-3 text-primary" />
+                  </div>
+                )}
+                <span className="text-xs font-semibold truncate">{user?.name}</span>
+              </div>
+              <Button variant="ghost" size="sm" className="h-6 px-2 text-[10px] text-destructive hover:bg-destructive/10 hover:text-destructive shrink-0" onClick={logout}>
+                Logout
+              </Button>
+            </div>
+            <div className="flex gap-2">
+              <Button variant="outline" size="sm" className="flex-1 h-8 text-[10px]" onClick={loadData}>
+                Refresh
+              </Button>
+            </div>
           </div>
         </div>
         

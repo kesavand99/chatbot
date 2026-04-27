@@ -1,108 +1,137 @@
-# Project Setup & Network Configuration Guide
+# NexusAI Project Setup & Installation Guide
 
-This guide documents the changes made to enable network access (using the app on other laptops) and how to run the project correctly.
-
-## 0. Prerequisites & Installation
-
-Follow these steps to set up the project for the first time:
-
-### Step 1: Install Python
-1.  Download and install **Python 3.10+** from [python.org](https://www.python.org/downloads/).
-2.  **Crucial**: During installation, check the box that says **"Add Python to PATH"**.
-3.  Check if Python and Pip are installed:
-    ```bash
-    python --version
-    pip --version
-    ```
-
-### Step 2: Set Up the Backend
-1.  Open a terminal and navigate to the `backend` directory:
-    ```bash
-    cd backend
-    ```
-2.  Create a virtual environment:
-    ```bash
-    python -m venv venv
-    ```
-3.  Activate the virtual environment:
-    - **Windows**: `venv\Scripts\activate`
-    - **Mac/Linux**: `source venv/bin/activate`
-4.  Install dependencies:
-    ```bash
-    pip install -r requirements.txt
-    ```
-
-### Step 3: Install Node.js
-1.  Download and install **Node.js (LTS version)** from [nodejs.org](https://nodejs.org/).
-2.  Check if Node and NPM are installed:
-    ```bash
-    node -v
-    npm -v
-    ```
-
-### Step 4: Set Up the Frontend
-1.  Navigate to the frontend directory:
-    ```bash
-    cd sparkle-ai-room-main
-    ```
-2.  Install dependencies:
-    ```bash
-    npm install
-    ```
+This guide provides step-by-step instructions for installing and running the NexusAI project, which consists of three main components: **Ollama (AI Engine)**, **Backend (Python FastAPI)**, and **Frontend (React)**.
 
 ---
 
-## 1. IP Address Configuration
-The current host IP address is identified as: `192.168.0.40`. All configurations have been updated to use this IP.
+## Part 1: Install & Set Up Ollama
 
-### Backend Configuration (`backend/.env`)
-The `CLIENT_ORIGINS` were updated to allow the frontend to communicate with the backend from different addresses:
-```env
-CLIENT_ORIGINS=http://localhost:5173,http://localhost:8080,http://127.0.0.1:8080,http://192.168.0.40:8080
-```
+Ollama is the local AI engine that powers NexusAI.
 
-### Frontend Configuration (`sparkle-ai-room-main/.env`)
-The API base URL was updated to point to the host machine's IP so other devices can reach the backend:
-```env
-VITE_API_BASE_URL=http://192.168.0.40:8000
-```
+### 1. Download and Install Ollama
+1. Go to the official Ollama website: [https://ollama.com/download](https://ollama.com/download)
+2. Choose your operating system (Windows, macOS, or Linux).
+3. Download the installer and run it.
 
+### 2. Verify Installation
+1. Open a terminal (Command Prompt, PowerShell, or Terminal).
+2. Run the following command to check if Ollama is installed:
+   ```bash
+   ollama --version
+   ```
+
+### 3. Download the AI Model
+NexusAI requires an AI model to generate responses. By default, it expects **llama3.2**.
+1. In your terminal, run the following command to download the model:
+   ```bash
+   ollama pull llama3.2
+   ```
+   *(Note: This might take a few minutes as the model is several gigabytes in size).*
+  
+  ollama start : ollama run llama3.2 
 ---
 
-## 2. Easy One-Command Startup (Recommended)
+## Part 2: Install & Set Up the Backend
 
-To start all services (Ollama, Backend, and Frontend) at once, use the `start_all.sh` script:
+The backend handles API requests, database interactions, and communicates with Ollama.
 
+### 1. Install Python
+1. Download **Python 3.10+** from [python.org](https://www.python.org/downloads/).
+2. **Crucial**: During installation, make sure to check the box that says **"Add Python to PATH"**.
+
+### 2. Set Up the Project
+1. Open a terminal and navigate to the `backend` folder inside the project:
+   ```bash
+   cd path/to/chatbot/backend
+   ```
+2. Create a virtual environment to isolate the dependencies:
+   ```bash
+   python -m venv venv
+   ```
+3. Activate the virtual environment:
+   - **Windows**: `venv\Scripts\activate`
+   - **Mac/Linux**: `source venv/bin/activate`
+4. Install all the required Python packages:
+   ```bash
+   pip install -r requirements.txt
+   ```
+
+### 3. Start the Backend Server
+Make sure your virtual environment is still activated!
 ```bash
-./start_all.sh
+backend start : 
+uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
 ```
-
-This will:
-1. Start **Ollama** (if it's not already running).
-2. Start the **Backend** (running on port 8000).
-3. Start the **Frontend** (running on port 8080).
-
-To stop all services, simply press **Ctrl+C** in the terminal where the script is running.
+*The backend should now be running at `http://localhost:8000`.*
 
 ---
 
-## 3. Running the Project Individually
+## Part 3: Install & Set Up the Frontend
 
-1.  Connect the other laptop to the **same Wi-Fi network**.
-2.  Open a web browser.
-3.  Enter the following URL:
-    `http://192.168.0.40:8080`
+The frontend is the React-based user interface you see in your browser.
+
+### 1. Install Node.js
+1. Download and install **Node.js (LTS version)** from [nodejs.org](https://nodejs.org/).
+2. Verify the installation by running:
+   ```bash
+   node -v
+   npm -v
+   ```
+
+### 2. Install Project Dependencies
+1. Open a *new* terminal window (leave the backend running).
+2. Navigate to the frontend folder:
+   ```bash
+   cd path/to/chatbot/sparkle-ai-room-main
+   ```
+3. Install all the necessary packages:
+   ```bash
+   npm install
+   ```
+
+### 3. Start the Frontend Server
+```bash
+frontend start: 
+    
+    npm run dev
+    
+```
+*The application should now be available at `http://localhost:8080` or `http://localhost:5173` depending on your Vite configuration.*
 
 ---
 
-## 4. Troubleshooting WebSocket Errors
-If you see a "WebSocket error" on the other laptop:
-1.  **Firewall**: Ensure Windows Firewall isn't blocking port `8000` or `8080`.
-2.  **IP Change**: If your router restarts, your IP might change from `192.168.0.40` to something else. Run `ipconfig` to check and update the `.env` files if necessary.
-3.  **Restart**: Always restart both `uvicorn` and `npm run dev` after making changes to `.env` files.
+## Part 4: Easy One-Command Startup (Recommended)
+
+To avoid manually opening multiple terminals every time you want to work on the project, you can use the automated startup script!
+
+### Starting Everything Automatically
+1. Open a terminal in the root `chatbot` folder.
+2. Run the `start_all.sh` script:
+   ```bash
+   ./start_all.sh
+   ```
+
+**What this script does:**
+1. Starts the **Ollama** application automatically.
+2. Starts the **Python Backend** in the background on port `8000`.
+3. Starts the **React Frontend** in the background on port `8080`.
+
+To stop all services simultaneously, simply press `Ctrl+C` in the terminal where you ran the script.
 
 ---
 
-## 5. Recent Features Added
-- **Typing Indicator**: Re-implemented the "NexusAI is typing..." animation that shows while waiting for the AI response.
-- **Auto-Hide**: The typing dots now disappear automatically once the AI starts streaming its answer for a smoother experience.
+## Network Configuration (Using on other laptops)
+
+If you want to access the chatbot from a mobile phone or another laptop on the same Wi-Fi network:
+
+1. **Find your host IP Address:** (e.g., `192.168.0.40`).
+2. **Update Backend `.env`**: Make sure your IP is in `CLIENT_ORIGINS`.
+   ```env
+   CLIENT_ORIGINS=http://localhost:5173,http://localhost:8080,http://192.168.0.40:8080
+   ```
+3. **Update Frontend `.env`**: Make sure `VITE_API_BASE_URL` points to your IP.
+   ```env
+   VITE_API_BASE_URL=http://192.168.0.40:8000
+   ```
+4. Restart the backend and frontend servers for the changes to take effect.
+5. On the other laptop, open a browser and type: `http://192.168.0.40:8080`

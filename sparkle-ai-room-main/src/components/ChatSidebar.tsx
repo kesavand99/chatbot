@@ -168,7 +168,7 @@ const ChatSidebar = ({ chats, activeChat, onSelectChat, onNewChat, onDeleteChat,
           <div className="w-1.5 h-1.5 rounded-full bg-green-500" />
           Model Online
         </div>
-        <div className="text-[10px] text-muted-foreground/60 space-y-0.5">
+        {/* <div className="text-[10px] text-muted-foreground/60 space-y-0.5">
           <div className="flex items-center justify-between">
             <span>New chat</span>
             <kbd className="px-1.5 py-0.5 rounded bg-secondary text-[9px] font-mono">Ctrl+N</kbd>
@@ -177,7 +177,7 @@ const ChatSidebar = ({ chats, activeChat, onSelectChat, onNewChat, onDeleteChat,
             <span>Toggle sidebar</span>
             <kbd className="px-1.5 py-0.5 rounded bg-secondary text-[9px] font-mono">Ctrl+/</kbd>
           </div>
-        </div>
+        </div> */}
       </div>
     </aside>
   );

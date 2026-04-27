@@ -10,6 +10,7 @@ export interface AuthUser {
 
 interface AuthContextType {
   user: AuthUser | null;
+  admin: AuthUser | null;
   login: () => void;
   logout: () => void;
   showLoginPrompt: boolean;
@@ -20,6 +21,7 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType>({
   user: null,
+  admin: null,
   login: () => {},
   logout: () => {},
   showLoginPrompt: false,
@@ -30,7 +32,8 @@ const AuthContext = createContext<AuthContextType>({
 
 export const useAuth = () => useContext(AuthContext);
 
-const STORAGE_KEY = "nexus_auth_user";
+const USER_STORAGE_KEY = "nexus_auth_user";
+const ADMIN_STORAGE_KEY = "nexus_auth_admin";
 const PROMPT_INTERVAL_MS = 2 * 60 * 1000; // 2 minutes
 
 // Google Client ID from env (public value, safe to embed in frontend)
@@ -52,7 +55,16 @@ function decodeJwtPayload(token: string): Record<string, any> {
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [user, setUser] = useState<AuthUser | null>(() => {
     try {
-      const stored = localStorage.getItem(STORAGE_KEY);
+      const stored = localStorage.getItem(USER_STORAGE_KEY);
+      return stored ? JSON.parse(stored) : null;
+    } catch {
+      return null;
+    }
+  });
+
+  const [admin, setAdmin] = useState<AuthUser | null>(() => {
+    try {
+      const stored = localStorage.getItem(ADMIN_STORAGE_KEY);
       return stored ? JSON.parse(stored) : null;
     } catch {
       return null;
@@ -79,10 +91,17 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         email: payload.email || "",
         picture: payload.picture || undefined,
       };
-      setUser(authUser);
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(authUser));
-      setShowLoginPrompt(false);
-      toast.success(`Welcome, ${authUser.name}!`);
+      
+      if (window.location.pathname.startsWith('/admin')) {
+        setAdmin(authUser);
+        localStorage.setItem(ADMIN_STORAGE_KEY, JSON.stringify(authUser));
+        toast.success(`Welcome Admin, ${authUser.name}!`);
+      } else {
+        setUser(authUser);
+        localStorage.setItem(USER_STORAGE_KEY, JSON.stringify(authUser));
+        setShowLoginPrompt(false);
+        toast.success(`Welcome, ${authUser.name}!`);
+      }
     } catch (err: any) {
       console.error("Failed to decode Google token:", err);
       toast.error("Google login failed");
@@ -141,6 +160,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
 
     promptTimerRef.current = setInterval(() => {
+      // Don't show login prompt on admin page
+      if (window.location.pathname.startsWith('/admin')) return;
       setShowLoginPrompt(true);
     }, PROMPT_INTERVAL_MS);
 
@@ -170,8 +191,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   // ── Logout ──
   const logout = useCallback(() => {
-    setUser(null);
-    localStorage.removeItem(STORAGE_KEY);
+    if (window.location.pathname.startsWith('/admin')) {
+      setAdmin(null);
+      localStorage.removeItem(ADMIN_STORAGE_KEY);
+    } else {
+      setUser(null);
+      localStorage.removeItem(USER_STORAGE_KEY);
+    }
     toast.success("Logged out successfully");
   }, []);
 
@@ -181,7 +207,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   }, []);
 
   return (
-    <AuthContext.Provider value={{ user, login, logout, showLoginPrompt, dismissPrompt, gisReady, renderGoogleButton }}>
+    <AuthContext.Provider value={{ user, admin, login, logout, showLoginPrompt, dismissPrompt, gisReady, renderGoogleButton }}>
       {children}
     </AuthContext.Provider>
   );
